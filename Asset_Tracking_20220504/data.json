@@ -1,1 +1,21 @@
-[{"Type":"Phone","Brand":"Apple","Model":"iPhone XS","Office":"Sweden","PurchaseDate":"2022-05-05T09:39:54.4128319+02:00","Price":1199,"Currency":"USD"},{"Type":"Phone","Brand":"Apple","Model":"iPhone X","Office":"Spain","PurchaseDate":"2021-05-05T09:39:54.4188055+02:00","Price":888,"Currency":"USD"}]
+[
+    {
+        "Type": "Phone",
+        "Brand": "Apple",
+        "Model": "iPhone XS Long Name That Won't Fit'",
+        "Office": "Sweden",
+        
+        "PurchaseDate": "2019-09-05T11:39:29.074592+02:00",
+        "Price": 1299,
+        "Currency": "USD"
+    },
+    {
+        "Type": "Phone",
+        "Brand": "Apple",
+        "Model": "iPhone X",
+        "Office": "Spain",
+        "PurchaseDate": "1981-06-06T11:39:29.0805012+02:00",
+        "Price": 899,
+        "Currency": "USD"
+    }
+]

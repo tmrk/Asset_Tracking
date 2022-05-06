@@ -9,13 +9,21 @@ namespace Asset_Tracking_20220504
     internal class Program
     {
         static void Main(string[] args)
-        { 
+        {
             LoadData(dataPath);
-            Panel("heading", "Asset Tracking", width: 100);
+            CurrentContentShown();
 
-            Panel("heading", "Asset Tracking 1");
+            ShowMenu(mainMenu);
+            SelectMenu(mainMenu);
+        }
+
+        static void CurrentContentShown()
+        {
+            Panel("heading", "Asset Tracking", width: 50, color: "yellow", tMargin: 2, bMargin: 2);
             ListAssets();
         }
+
+        // === SETTING UP SOME VARIABLES ===
 
         static string dataPath = Path.Combine(Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName, @"data.json");
 
@@ -30,36 +38,57 @@ namespace Asset_Tracking_20220504
             new Column("Model", 10),
             new Column("Office", 10),
             new Column("Purchase Date", 14),
-            new Column("Price", 10),
-            new Column("Currency", 10),
-            new Column("Local Price", 1)
+            new Column("Price", 6),
+            new Column("Currency"),
+            new Column("Local Price")
         };
 
-        static string PrintAssetByColumns(Asset asset, List<Column> cols)
+        static List<menuFunction> mainMenu = new List<menuFunction>
+        {
+            new menuFunction("Sort by type of asset", ()=> ListAssets()),
+            new menuFunction("Sort by purchase date", ()=> ListAssets()),
+            new menuFunction("Mark end of life assets", ()=> ListAssets()),
+            new menuFunction("Quit", ()=> Environment.Exit(0))
+        };
+
+
+        // === PROGRAM METHODS ===
+
+        // Returns a string from an Asset that spaces the asset's properties based on the passed List that defines column names and column widths
+        static string PrintAssetByColumns(Asset asset, List<Column> cols, int colspan = 1)
         {
             string row = "";
-            foreach (Column column in cols)
+            for (int i = 0; i < cols.Count; i++)
             {
+                Column column = cols[i];
+                if (i == cols.Count - 1) colspan = 0; // the last column will not have colspan
                 if (asset.GetType().GetProperty(column.PropertyName) != null)
                 {
                     var propertyValue = asset.GetType().GetProperty(column.PropertyName).GetValue(asset);
-                    string propAsstring = "";
+                    string propertyString = "";
 
-                    if (propertyValue is DateTime) propAsstring = Convert.ToDateTime(propertyValue).ToString("yyyy-MM-dd");
-                    else if (propertyValue is long) propAsstring = FormatN(Convert.ToInt64(propertyValue));
-                    else propAsstring = propertyValue.ToString();
+                    if (propertyValue is DateTime) propertyString = Convert.ToDateTime(propertyValue).ToString("yyyy-MM-dd");
+                    else if (propertyValue is long) propertyString = TextAlign(FormatN(Convert.ToInt64(propertyValue)), column.Width, "right");
+                    else propertyString = propertyValue.ToString();
 
-                    row += propAsstring + new string(' ', Math.Max(column.Width - propAsstring.ToString().Length, 1));
+                    // If the content is longer than the column width, cut it down and add "~" / "…"
+                    if (propertyString.Length > column.Width) propertyString = propertyString.Substring(0, column.Width - 1) + "~";
+
+                    row += propertyString + new string(' ', Math.Max(column.Width - propertyString.Length + colspan, 0));
                 }
-                else row += new string(' ', column.Width);
+                else row += new string(' ', column.Width + colspan);
             }
             return row;
         }
 
         static void ListAssets()
         {
-            Panel("list", cols: columns, list: assets);
-            Console.ReadLine();
+            Panel("table", cols: columns, rows: assets);
+        }
+
+        static void ListAssetsHighlighted()
+        {
+            Panel("table", cols: columns, rows: assets);
         }
 
         static void LoadData(string path)
@@ -84,7 +113,7 @@ namespace Asset_Tracking_20220504
 
 
 
-        // HELPER METHODS
+        // === HELPER METHODS ===
 
         // Populate the "asset" List with some dummy data
         static void AddTestData()
@@ -93,25 +122,21 @@ namespace Asset_Tracking_20220504
             assets.Add(new Asset("Phone", "Apple", "iPhone X", "Spain", DateTime.Now.AddYears(-1), 888));
         }
 
+        // Generates a panel window and draws it onto the consol to show output in a nice way
         static void Panel(string partToPrint, string content = "",
-            int width = 0, int margin = 0, int hPadding = 2, int vPadding = 0, int border = 1,
-            string textAlign = "", string panel = "", string text = "",
+            int width = 0, int hMargin = 0, int tMargin = 0, int bMargin = 0, int hPadding = 2, int vPadding = 0, int border = 1, int colspan = 1,
+            string textAlign = "", string color = "", string fontColor = "",
             bool highlight = false, string highlightColor = "", string highlightTextColor = "",
-            string subheading = "", List<Column> cols = null, List<Asset> list = null)
+            string subheading = "", List<Column> cols = null, List<Asset> rows = null)
         {
-            // new comment
-            // second comment
-            // This code is for temporary branch
-            // This code is for temporary-2 branch
+            if (width == 0) width = Console.WindowWidth - (hMargin * 2) - (hPadding * 2) - 2; // sets the panel to full window width if no width is defined
+            if (hMargin == 0) hMargin = ((Console.WindowWidth - hMargin - width - hPadding) / 2) - (border * 2); // centers the panel if no hMargin is defined
 
-            //width = (width != 0) ? width : Console.WindowWidth - (margin * 2) - (hPadding * 2) - 2;
             content = TextAlign(content, width, textAlign);
-            //margin = (margin != 0) ? margin : (Console.WindowWidth - margin - width - hPadding) / 2;
-
             ConsoleColor panelColor, textColor, panelColorHighlight, textColorHighlight;
-            if (Enum.TryParse(FirstLetterToUpper(panel), out panelColor)) { }
+            if (Enum.TryParse(FirstLetterToUpper(color), out panelColor)) { }
             else panelColor = ConsoleColor.Gray;
-            if (Enum.TryParse(FirstLetterToUpper(text), out textColor)) { }
+            if (Enum.TryParse(FirstLetterToUpper(fontColor), out textColor)) { }
             else textColor = ConsoleColor.Black;
             if (highlightColor != "" || highlightTextColor != "") highlight = true;
             if (highlight)
@@ -126,24 +151,25 @@ namespace Asset_Tracking_20220504
                 panelColorHighlight = panelColor;
                 textColorHighlight = textColor;
             }
+            if (tMargin != 0) for (int i = 0; i < tMargin; i++) Console.WriteLine("");
             switch (partToPrint.ToLower())
             {
                 case "top":
                     Console.ForegroundColor = panelColor;
-                    Console.Write(new string(' ', margin));
+                    Console.Write(new string(' ', hMargin));
                     if (border == 1) Console.WriteLine("┌" + new string('─', width + (hPadding * 2)) + "┐");
-                    for (int i = 0; i < vPadding; i++) Panel("br", width: width, margin: margin);
+                    for (int i = 0; i < vPadding; i++) Panel("br", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     break;
                 case "bottom":
-                    for (int i = 0; i < vPadding; i++) Panel("br", width: width, margin: margin);
-                    Console.Write(new string(' ', margin));
+                    for (int i = 0; i < vPadding; i++) Panel("br", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
+                    Console.Write(new string(' ', hMargin));
                     Console.ForegroundColor = panelColor;
                     if (border == 1) Console.WriteLine("└" + new string('─', width + (hPadding * 2)) + "┘");
                     Console.ResetColor();
                     break;
                 case "left":
                     Console.ResetColor();
-                    Console.Write(new string(' ', margin));
+                    Console.Write(new string(' ', hMargin));
                     if (border == 1)
                     {
                         Console.ForegroundColor = panelColor;
@@ -163,7 +189,7 @@ namespace Asset_Tracking_20220504
                     Console.Write(new string(' ', hPadding));
                     break;
                 case "right":
-                    Console.Write(new string(' ', Math.Max(width + margin + hPadding + 1 - Console.CursorLeft, 0)));
+                    Console.Write(new string(' ', Math.Max(width + hMargin + hPadding + 1 - Console.CursorLeft, 0)));
                     Console.Write(new string(' ', hPadding));
                     Console.ResetColor();
                     if (border == 1)
@@ -174,155 +200,70 @@ namespace Asset_Tracking_20220504
                     else Console.WriteLine("");
                     break;
                 case "row":
-                    for (int i = 0; i < vPadding; i++) Panel("br", width: width);
-                    Panel("left", width: width, border: border, highlight: highlight, highlightColor: highlightColor, highlightTextColor: highlightTextColor, margin: margin);
+                    for (int i = 0; i < vPadding; i++) Panel("br", width: width, color: color, fontColor: fontColor);
+                    Panel("left", width: width, border: border, color: color, fontColor: fontColor, highlight: highlight, highlightColor: highlightColor, highlightTextColor: highlightTextColor, hMargin: hMargin);
                     Console.Write(content);
-                    Panel("right", width: width, border: border, margin: margin);
-                    for (int i = 0; i < vPadding; i++) Panel("br", width: width);
+                    Panel("right", width: width, border: border, color: color, fontColor: fontColor, hMargin: hMargin);
+                    for (int i = 0; i < vPadding; i++) Panel("br", width: width, color: color, fontColor: fontColor);
                     break;
                 case "hr":
-                    Panel("left", width: width, margin: margin);
+                    Panel("left", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     Console.Write(new string('─', width));
-                    Panel("right", width: width, margin: margin);
+                    Panel("right", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     break;
                 case "br":
-                    Panel("left", width: width, margin: margin);
+                    Panel("left", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     Console.Write(" ");
-                    Panel("right", width: width, margin: margin);
+                    Panel("right", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     break;
                 case "heading":
-                    Console.WriteLine("");
-                    Panel("top", width: width, vPadding: 1, margin: margin);
-                    Panel("row", content, textAlign: "center", width: width, margin: margin);
+                    Panel("top", width: width, vPadding: 1, hMargin: hMargin, color: color, fontColor: fontColor);
+                    Panel("row", content, textAlign: "center", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     if (subheading != "")
                     {
-                        Panel("br");
-                        Panel("row", subheading, textAlign: "center", width: width, margin: margin);
+                        Panel("br", color: color);
+                        Panel("row", subheading, textAlign: "center", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     }
-                    Panel("bottom", width: width, vPadding: 1, margin: margin);
+                    Panel("bottom", width: width, vPadding: 1, hMargin: hMargin, color: color, fontColor: fontColor);
                     break;
-                case "list":
+                case "table":
                     string topRow = "";
                     int listWidth = 0;
-                    foreach (Column col in cols)
+                    for (int i = 0; i < cols.Count; i++)
                     {
-                        topRow += col.Name + new string(' ', col.Width - col.Name.Length);
-                        listWidth += col.Width;
+                        Column col = cols[i];
+                        int topRowColspan = colspan;
+                        if (i == cols.Count - 1) topRowColspan = 0;
+                        topRow += col.Name + new string(' ', col.Width - col.Name.Length + topRowColspan);
+                        listWidth += col.Width + topRowColspan;
                     }
-                    listWidth = Math.Max(listWidth, width);
-                    Panel("top", width: listWidth, vPadding: 1);
-                    Panel("row", topRow, width: listWidth);
-                    Panel("hr", width: listWidth);
-                    foreach (var item in list) Panel("row", PrintAssetByColumns(item, cols), width: listWidth);
-                    Panel("bottom", width: listWidth, vPadding: 1);
+                    Panel("top", width: listWidth, vPadding: 1, color: color, fontColor: fontColor);
+                    Panel("row", topRow, width: listWidth, color: color, fontColor: fontColor);
+                    Panel("hr", width: listWidth, color: color, fontColor: fontColor);
+                    foreach (var item in rows)
+                    {
+                        
+                        if (item.EndOfLife(3))
+                        {
+                            highlightColor = "Red";
+                            highlightTextColor = "";
+
+                        }
+                        else if (item.EndOfLife(6))
+                        {
+                            highlightColor = "Yellow";
+                            highlightTextColor = "Black";
+                        }
+                        Panel("row", PrintAssetByColumns(item, cols, colspan: colspan), width: listWidth, color: color, fontColor: fontColor, highlightColor: highlightColor, highlightTextColor: highlightTextColor);
+                    }
+                    Panel("bottom", width: listWidth, vPadding: 1, color: color, fontColor: fontColor);
                     break;
             }
+            if (bMargin != 0) for (int i = 0; i < bMargin; i++) Console.WriteLine("");
         }
 
-
-        // Generates a panel window and draws it onto the consol to show output in a nice way
-        static void PrintPanel(string partToPrint, string content = "", int margin = 14, int hPadding = 2, int vPadding = 0, int border = 1, string textAlign = "", string panel = "", string text = "", bool highlight = false, string highlightColor = "", string highlightTextColor = "", string subheading = "")
-        {
-            int panelWidth = Console.WindowWidth - (margin * 2) - (hPadding * 2) - 2;
-            content = TextAlign(content, panelWidth, textAlign);
-
-            ConsoleColor panelColor, textColor, panelColorHighlight, textColorHighlight;
-            if (Enum.TryParse(FirstLetterToUpper(panel), out panelColor)) { }
-            else panelColor = ConsoleColor.Gray;
-            if (Enum.TryParse(FirstLetterToUpper(text), out textColor)) { }
-            else textColor = ConsoleColor.Black;
-            if (highlightColor != "" || highlightTextColor != "") highlight = true;
-            if (highlight)
-            {
-                if (Enum.TryParse(FirstLetterToUpper(highlightColor), out panelColorHighlight)) { }
-                else panelColorHighlight = ConsoleColor.DarkGreen;
-                if (Enum.TryParse(FirstLetterToUpper(highlightTextColor), out textColorHighlight)) { }
-                else textColorHighlight = ConsoleColor.White;
-            }
-            else
-            {
-                panelColorHighlight = panelColor;
-                textColorHighlight = textColor;
-            }
-            switch (partToPrint.ToLower())
-            {
-                case "top":
-                    Console.ForegroundColor = panelColor;
-                    Console.Write(new string(' ', margin));
-                    if (border == 1) Console.WriteLine("┌" + new string('─', panelWidth + (hPadding * 2)) + "┐");
-                    for (int i = 0; i < vPadding; i++) PrintPanel("br", margin: margin);
-                    break;
-                case "bottom":
-                    for (int i = 0; i < vPadding; i++) PrintPanel("br", margin: margin);
-                    Console.Write(new string(' ', margin));
-                    Console.ForegroundColor = panelColor;
-                    if (border == 1) Console.WriteLine("└" + new string('─', panelWidth + (hPadding * 2)) + "┘");
-                    Console.ResetColor();
-                    break;
-                case "left":
-                    Console.ResetColor();
-                    Console.Write(new string(' ', margin));
-                    if (border == 1)
-                    {
-                        Console.ForegroundColor = panelColor;
-                        Console.Write("│");
-                        Console.ResetColor();
-                    }
-                    if (highlight)
-                    {
-                        Console.BackgroundColor = panelColorHighlight;
-                        Console.ForegroundColor = textColorHighlight;
-                    }
-                    else
-                    {
-                        Console.BackgroundColor = panelColor;
-                        Console.ForegroundColor = textColor;
-                    }
-                    Console.Write(new string(' ', hPadding));
-                    break;
-                case "right":
-                    Console.Write(new string(' ', Math.Max(panelWidth + margin + hPadding + 1 - Console.CursorLeft, 0)));
-                    Console.Write(new string(' ', hPadding));
-                    Console.ResetColor();
-                    if (border == 1)
-                    {
-                        Console.ForegroundColor = panelColor;
-                        Console.WriteLine("│");
-                    }
-                    else Console.WriteLine("");
-                    break;
-                case "row":
-                    for (int i = 0; i < vPadding; i++) PrintPanel("br");
-                    PrintPanel("left", border: border, highlight: highlight, highlightColor: highlightColor, highlightTextColor: highlightTextColor, margin: margin);
-                    Console.Write(content);
-                    PrintPanel("right", border: border, margin: margin);
-                    for (int i = 0; i < vPadding; i++) PrintPanel("br");
-                    break;
-                case "hr":
-                    PrintPanel("left", margin: margin);
-                    Console.Write(new string('─', panelWidth));
-                    PrintPanel("right", margin: margin);
-                    break;
-                case "br":
-                    PrintPanel("left", margin: margin);
-                    Console.Write(" ");
-                    PrintPanel("right", margin: margin);
-                    break;
-                case "heading":
-                    Console.WriteLine("");
-                    PrintPanel("top", vPadding: 1, margin: margin);
-                    PrintPanel("row", content, textAlign: "center", margin: margin);
-                    if (subheading != "")
-                    {
-                        PrintPanel("br");
-                        PrintPanel("row", subheading, textAlign: "center", margin: margin);
-                    }
-                    PrintPanel("bottom", vPadding: 1, margin: margin);
-                    break;
-            }
-        }
-
-        static string TextAlign(string text = "", int boxLength = 1, string textAlign = "left")
+        // Returns a sring that aligns the passed text inside the width of a containing box
+        static string TextAlign(string text = "", int boxLength = 1, string textAlign = "")
         {
             int leftPadding = 0;
             switch (textAlign.ToLower().Trim())
@@ -355,12 +296,113 @@ namespace Asset_Tracking_20220504
             return result;
         }
 
+        // Returns the same string with its first letter uppercased
         static string? FirstLetterToUpper(string str)
         {
             if (str == null) return null;
-            if (str.Length > 1) return char.ToUpper(str[0]) + str.Substring(1).ToLower();
+            if (str.Length > 1) return char.ToUpper(str[0]) + str.Substring(1);
             return str.ToUpper();
         }
 
+        // Displays a menu UI for the basic functions
+        static void ShowMenu(List<menuFunction> menu, int selected = 1)
+        {
+            Panel("top", width: 50, vPadding: 1);
+            if (selected < 1) selected = menu.Count;
+            else if (selected > menu.Count) selected = 1;
+            for (int i = 0; i < menu.Count; i++)
+            {
+                Panel("row", "[" + (i + 1) + "] " + menu[i].Description, highlight: i == selected - 1, width: 50);
+            }
+            Panel("bottom", width: 50, vPadding: 1);
+            Console.CursorVisible = false;
+            SelectMenu(menu, selected);
+        }
+
+
+        static void SelectMenu(List<menuFunction> menu, int selected = 1)
+        {
+            ConsoleKeyInfo keyPressed = Console.ReadKey(true);
+            Console.Clear();
+            CurrentContentShown();
+            switch (keyPressed.Key)
+            {
+                case ConsoleKey.Enter:
+                    menu[selected - 1].Action.Invoke();
+                    break;
+                case ConsoleKey.UpArrow or ConsoleKey.LeftArrow or ConsoleKey.Backspace:
+                    ShowMenu(menu, selected - 1);
+                    break;
+                case ConsoleKey.DownArrow or ConsoleKey.RightArrow or ConsoleKey.Tab:
+                    ShowMenu(menu, selected + 1);
+                    break;
+                default: // If the keyPressed is not arrows/Enter, then check which number it is
+                    Int32 keyNumber;
+                    if (Int32.TryParse(keyPressed.KeyChar.ToString(), out keyNumber) && keyNumber <= menu.Count)
+                    {
+                        menu[keyNumber - 1].Action.Invoke();
+                    }
+                    else ShowMenu(menu, selected);
+                    break;
+            }
+        }
+    }
+
+    public class Asset
+    {
+        public Asset(string type, string brand, string model, string office, DateTime purchaseDate, long price, string currency = "USD")
+        {
+            Type = type;
+            Brand = brand;
+            Model = model;
+            Office = office;
+            PurchaseDate = purchaseDate;
+            Price = price;
+            Currency = currency;
+        }
+
+        public string Type { get; set; }
+        public string Brand { get; set; }
+        public string Model { get; set; }
+        public string Office { get; set; }
+        public DateTime PurchaseDate { get; set; }
+        public long Price { get; set; }
+        public string Currency { get; set; }
+
+        public bool EndOfLife(int numberOfMonths = 3)
+        {
+            DateTime ExpiryDate = PurchaseDate.AddYears(3);
+
+            return PurchaseDate < DateTime.Now.AddYears(-3).AddMonths(numberOfMonths);
+        }
+
+        static long GetLocalPrice()
+        {
+            return 0;
+        }
+    }
+
+    internal class Column
+    {
+        public Column(string name = "", int width = 1, string propertyName = "")
+        {
+            Name = name;
+            Width = Math.Max(width, name.Length);
+            PropertyName = propertyName.Length != 0 ? propertyName : new CultureInfo("en-UK").TextInfo.ToTitleCase(name).Replace(" ", "");
+        }
+        public string Name { get; set; }
+        public int Width { get; set; }
+        public string PropertyName { get; set; }
+    }
+
+    internal class menuFunction
+    {
+        public menuFunction(string description, Action action)
+        {
+            Description = description;
+            Action = action;
+        }
+        public string Description { get; set; }
+        public Action Action { get; set; }
     }
 }
