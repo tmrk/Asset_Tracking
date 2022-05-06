@@ -100,6 +100,7 @@ namespace Asset_Tracking_20220504
             string subheading = "", List<Column> cols = null, List<Asset> list = null)
         {
             // new comment
+            // second comment
             //width = (width != 0) ? width : Console.WindowWidth - (margin * 2) - (hPadding * 2) - 2;
             content = TextAlign(content, width, textAlign);
             //margin = (margin != 0) ? margin : (Console.WindowWidth - margin - width - hPadding) / 2;
