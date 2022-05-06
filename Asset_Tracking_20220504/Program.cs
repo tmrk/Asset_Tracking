@@ -101,6 +101,7 @@ namespace Asset_Tracking_20220504
         {
             // new comment
             // second comment
+            // This code is for temporary branch
             //width = (width != 0) ? width : Console.WindowWidth - (margin * 2) - (hPadding * 2) - 2;
             content = TextAlign(content, width, textAlign);
             //margin = (margin != 0) ? margin : (Console.WindowWidth - margin - width - hPadding) / 2;
