@@ -82,8 +82,13 @@ namespace Asset_Tracking_20220504
         {
             if (orderByTemp != "")
             {
-                assets = assets.OrderBy(asset => asset.GetType().GetProperty(orderByTemp).GetValue(asset)).ToList();
-                if (thenByTemp != "") assetsTemp = assetsTemp.OrderBy(asset => asset.GetType().GetProperty(orderByTemp).GetValue(asset)).ThenBy(asset => asset.GetType().GetProperty(thenByTemp).GetValue(asset)).ToList();
+                if (thenByTemp != "") assetsTemp = assets
+                        .OrderBy(asset => asset.GetType().GetProperty(orderByTemp).GetValue(asset))
+                        .ThenBy(asset => asset.GetType().GetProperty(thenByTemp).GetValue(asset))
+                        .ToList();
+                else assetsTemp = assets
+                        .OrderBy(asset => asset.GetType().GetProperty(orderByTemp).GetValue(asset))
+                        .ToList();
             }
             else assetsTemp = assets;
             Panel("table",
