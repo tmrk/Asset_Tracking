@@ -20,11 +20,11 @@ namespace Asset_Tracking_20220504
 
         static string dataPath = Path.Combine(Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName, @"data.json");
 
-        static bool filterTableTemp = false;
+        public static bool filterTableTemp = false;
 
-        static string orderByTemp = "";
+        public static string orderByTemp = "";
 
-        static string thenByTemp = "";
+        public static string thenByTemp = "";
 
         static CultureInfo ci = new CultureInfo("en-UK");
 
@@ -83,7 +83,7 @@ namespace Asset_Tracking_20220504
             if (orderByTemp != "")
             {
                 assets = assets.OrderBy(asset => asset.GetType().GetProperty(orderByTemp).GetValue(asset)).ToList();
-                if (thenByTemp != "") assetsTemp = assetsTemp.OrderBy(asset => asset.GetType().GetProperty(thenByTemp).GetValue(asset)).ToList();
+                if (thenByTemp != "") assetsTemp = assetsTemp.OrderBy(asset => asset.GetType().GetProperty(orderByTemp).GetValue(asset)).ThenBy(asset => asset.GetType().GetProperty(thenByTemp).GetValue(asset)).ToList();
             }
             else assetsTemp = assets;
             Panel("table",

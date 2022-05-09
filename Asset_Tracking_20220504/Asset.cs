@@ -66,11 +66,6 @@ namespace Asset_Tracking_20220504
             DateTime ExpiryDate = PurchaseDate.AddYears(3);
             return PurchaseDate < DateTime.Now.AddYears(-3).AddMonths(numberOfMonths);
         }
-
-        static long GetLocalPrice()
-        {
-            return 0;
-        }
     }
 
 }
