@@ -48,6 +48,7 @@ namespace Asset_Tracking_20220504
 
         static List<MenuFunction> mainMenu = new List<MenuFunction>
         {
+            new MenuFunction("Show all assets unsorted", ()=> ShowState(mainMenu, filterTable: false, orderBy: "", thenBy: "")),
             new MenuFunction("Add New Asset", ()=> AddNew()),
             new MenuFunction("Sort by type of asset", ()=> ShowState(mainMenu, subheading: "Sorted by Type", filterTable: filterTableTemp, orderBy: "Type")),
             new MenuFunction("Sort by purchase date", ()=> ShowState(mainMenu, subheading: "Sorted by Purchase Date", filterTable: filterTableTemp, orderBy: "PurchaseDate")),
