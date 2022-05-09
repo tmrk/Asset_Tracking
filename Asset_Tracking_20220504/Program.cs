@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 
 namespace Asset_Tracking_20220504
@@ -11,25 +12,25 @@ namespace Asset_Tracking_20220504
         static void Main(string[] args)
         {
             LoadData(dataPath);
-            CurrentContentShown();
-
-            ShowMenu(mainMenu);
-            SelectMenu(mainMenu);
+            ShowState(mainMenu);
         }
 
-        static void CurrentContentShown()
-        {
-            Panel("heading", "Asset Tracking", width: 50, color: "yellow", tMargin: 2, bMargin: 2);
-            ListAssets();
-        }
 
-        // === SETTING UP SOME VARIABLES ===
+        // === SETTING UP SOME OPTIONS & VARIABLES ===
 
         static string dataPath = Path.Combine(Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName, @"data.json");
+
+        static bool filterTableTemp = false;
+
+        static string orderByTemp = "";
+
+        static string thenByTemp = "";
 
         static CultureInfo ci = new CultureInfo("en-UK");
 
         static List<Asset> assets = new List<Asset>();
+
+        static List<Asset> assetsTemp = new List<Asset>();
 
         static List<Column> columns = new List<Column>
         {
@@ -37,22 +38,85 @@ namespace Asset_Tracking_20220504
             new Column("Brand", 10),
             new Column("Model", 10),
             new Column("Office", 10),
-            new Column("Purchase Date", 14),
-            new Column("Price", 6),
-            new Column("Currency"),
-            new Column("Local Price")
+            new Column("Purchase Date", 10),
+            new Column("Price USD", 6),
+            new Column("", 3, propertyName: "DefaultCurrency"),
+            new Column("Local Price"),
+            new Column("Currency")
+
         };
 
-        static List<menuFunction> mainMenu = new List<menuFunction>
+        static List<MenuFunction> mainMenu = new List<MenuFunction>
         {
-            new menuFunction("Sort by type of asset", ()=> ListAssets()),
-            new menuFunction("Sort by purchase date", ()=> ListAssets()),
-            new menuFunction("Mark end of life assets", ()=> ListAssets()),
-            new menuFunction("Quit", ()=> Environment.Exit(0))
+            new MenuFunction("Add New Asset", ()=> AddNew()),
+            new MenuFunction("Sort by type of asset", ()=> ShowState(mainMenu, subheading: "Sorted by Type", filterTable: filterTableTemp, orderBy: "Type")),
+            new MenuFunction("Sort by purchase date", ()=> ShowState(mainMenu, subheading: "Sorted by Purchase Date", filterTable: filterTableTemp, orderBy: "PurchaseDate")),
+            new MenuFunction("Sort by Office then Purchase Date", ()=> ShowState(mainMenu, subheading: "Sorted by Office then Purchase Date", filterTable: filterTableTemp, orderBy: "Office", thenBy: "PurchaseDate")),
+            new MenuFunction("Mark end of life assets", ()=> ShowState(mainMenu, filterTable: true, orderBy: orderByTemp, thenBy: thenByTemp, subheading: "Mark end of life assets | Red: within 3 months | Yellow: within 6 months")),
+            new MenuFunction("Quit", ()=> Environment.Exit(0))
         };
 
 
         // === PROGRAM METHODS ===
+
+        static public void ShowState(List<MenuFunction> menu, int menuSelected = 1, string subheading = "", bool filterTable = false, string orderBy = "", string thenBy = "")
+        {
+            // set global options
+            filterTableTemp = filterTable;
+            orderByTemp = orderBy;
+            thenByTemp = thenBy;
+
+            PrintHeader(subheading: subheading);
+            PrintAssets();
+            ShowMenu(menu, menuSelected, subheading);
+            SelectMenu(menu, menuSelected, subheading);
+        }
+
+        static void PrintHeader(string subheading = "")
+        {
+            Console.Clear();
+            Panel("heading", "Asset Tracking", subheading: subheading, width: 80, color: "yellow", tMargin: 1);
+        }
+
+        static void PrintAssets()
+        {
+            if (orderByTemp != "")
+            {
+                assets = assets.OrderBy(asset => asset.GetType().GetProperty(orderByTemp).GetValue(asset)).ToList();
+                if (thenByTemp != "") assetsTemp = assetsTemp.OrderBy(asset => asset.GetType().GetProperty(thenByTemp).GetValue(asset)).ToList();
+            }
+            else assetsTemp = assets;
+            Panel("table",
+                cols: columns,
+                colspan: 2,
+                rows: assetsTemp,
+                filterTable: filterTableTemp);
+        }
+
+        // Allows user to input a new asset (Note: no error handling implemented)
+        static public void AddNew()
+        {
+            Console.Clear();
+            Asset newAsset = new Asset("", "", "", "", DateTime.Now, 0);
+            Console.CursorVisible = true;
+            Panel("heading", "Add New Asset", width: 80, color: "yellow", tMargin: 1, bMargin: 2);
+            Console.Write("Enter the type of the asset (Phone, Computer, etc): ");
+            newAsset.Type = Console.ReadLine();
+            Console.Write("Enter brand: ");
+            newAsset.Brand = Console.ReadLine();
+            Console.Write("Enter model: ");
+            newAsset.Model = Console.ReadLine();
+            Console.Write("Enter office (Sweden, UK, etc): ");
+            newAsset.Office = Console.ReadLine();
+            Console.Write("Enter the date of purchase (yyyy-MM-dd): ");
+            newAsset.PurchaseDate = Convert.ToDateTime(Console.ReadLine());
+            Console.Write("Enter price in " + newAsset.Currency + ": ");
+            newAsset.LocalPrice = Convert.ToDouble(Console.ReadLine());
+            assets.Add(newAsset);
+
+            SaveData(dataPath);
+            ShowState(mainMenu);
+        }
 
         // Returns a string from an Asset that spaces the asset's properties based on the passed List that defines column names and column widths
         static string PrintAssetByColumns(Asset asset, List<Column> cols, int colspan = 1)
@@ -68,10 +132,10 @@ namespace Asset_Tracking_20220504
                     string propertyString = "";
 
                     if (propertyValue is DateTime) propertyString = Convert.ToDateTime(propertyValue).ToString("yyyy-MM-dd");
-                    else if (propertyValue is long) propertyString = TextAlign(FormatN(Convert.ToInt64(propertyValue)), column.Width, "right");
+                    else if (propertyValue is double) propertyString = TextAlign(FormatN(Convert.ToDouble(propertyValue)), column.Width, "right");
                     else propertyString = propertyValue.ToString();
 
-                    // If the content is longer than the column width, cut it down and add "~" / "…"
+                    // If the content is longer than the column width, cut it down and add "~"
                     if (propertyString.Length > column.Width) propertyString = propertyString.Substring(0, column.Width - 1) + "~";
 
                     row += propertyString + new string(' ', Math.Max(column.Width - propertyString.Length + colspan, 0));
@@ -81,24 +145,16 @@ namespace Asset_Tracking_20220504
             return row;
         }
 
-        static void ListAssets()
-        {
-            Panel("table", cols: columns, rows: assets);
-        }
-
-        static void ListAssetsHighlighted()
-        {
-            Panel("table", cols: columns, rows: assets);
-        }
-
+        // Loads the database from a JSON file at the specified path, or load it from
         static void LoadData(string path)
         {
-            if (File.Exists(path))
+            string json = "";
+            if (File.Exists(path)) json = File.ReadAllText(path);
+            try
             {
-                string json = File.ReadAllText(path);
                 assets = JsonSerializer.Deserialize<List<Asset>>(json);
             }
-            else
+            catch (Exception)
             {
                 AddTestData();
                 SaveData(path);
@@ -106,11 +162,11 @@ namespace Asset_Tracking_20220504
             }
         }
 
+        // Saves the assets list into a JSON file at the specificed path
         static void SaveData(string path)
         {
             File.WriteAllText(path, JsonSerializer.Serialize(assets));
         }
-
 
 
         // === HELPER METHODS ===
@@ -119,7 +175,12 @@ namespace Asset_Tracking_20220504
         static void AddTestData()
         {
             assets.Add(new Asset("Phone", "Apple", "iPhone XS", "Sweden", DateTime.Now, 999));
-            assets.Add(new Asset("Phone", "Apple", "iPhone X", "Spain", DateTime.Now.AddYears(-1), 888));
+            assets.Add(new Asset("Phone", "Apple", "iPhone X", "Spain", DateTime.Now.AddYears(-3).AddMonths(2), 888));
+            assets.Add(new Asset("Computer", "Apple", "MacBook Pro", "United Kingdom", DateTime.Now.AddYears(-1), 15000));
+            assets.Add(new Asset("Computer", "Lenovo", "ThinkCentre", "Spain", DateTime.Now.AddYears(-3).AddMonths(5), 5000));
+            assets.Add(new Asset("Phone", "Samsung", "Galaxy X", "United Kingdom", DateTime.Now.AddYears(-1), 888));
+            assets.Add(new Asset("Phone", "Samsung", "Galaxy XS", "United Kingdom", DateTime.Now.AddYears(-7), 888));
+            assets.Add(new Asset("Computer", "Asus", "W234", "USA", DateTime.Now.AddYears(-1), 888));
         }
 
         // Generates a panel window and draws it onto the consol to show output in a nice way
@@ -127,7 +188,7 @@ namespace Asset_Tracking_20220504
             int width = 0, int hMargin = 0, int tMargin = 0, int bMargin = 0, int hPadding = 2, int vPadding = 0, int border = 1, int colspan = 1,
             string textAlign = "", string color = "", string fontColor = "",
             bool highlight = false, string highlightColor = "", string highlightTextColor = "",
-            string subheading = "", List<Column> cols = null, List<Asset> rows = null)
+            string subheading = "", List<Column> cols = null, List<Asset> rows = null, bool filterTable = false)
         {
             if (width == 0) width = Console.WindowWidth - (hMargin * 2) - (hPadding * 2) - 2; // sets the panel to full window width if no width is defined
             if (hMargin == 0) hMargin = ((Console.WindowWidth - hMargin - width - hPadding) / 2) - (border * 2); // centers the panel if no hMargin is defined
@@ -221,7 +282,7 @@ namespace Asset_Tracking_20220504
                     Panel("row", content, textAlign: "center", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     if (subheading != "")
                     {
-                        Panel("br", color: color);
+                        Panel("br", color: color, width: width, hMargin: hMargin);
                         Panel("row", subheading, textAlign: "center", width: width, hMargin: hMargin, color: color, fontColor: fontColor);
                     }
                     Panel("bottom", width: width, vPadding: 1, hMargin: hMargin, color: color, fontColor: fontColor);
@@ -242,19 +303,26 @@ namespace Asset_Tracking_20220504
                     Panel("hr", width: listWidth, color: color, fontColor: fontColor);
                     foreach (var item in rows)
                     {
-                        
-                        if (item.EndOfLife(3))
+                        if (filterTable)
                         {
-                            highlightColor = "Red";
-                            highlightTextColor = "";
+                            if (item.EndOfLife(3))
+                            {
+                                highlightColor = "Red";
+                                highlightTextColor = "";
 
+                            }
+                            else if (item.EndOfLife(6))
+                            {
+                                highlightColor = "Yellow";
+                                highlightTextColor = "Black";
+                            }
+                            else
+                            {
+                                highlightColor = "";
+                                highlightTextColor = "";
+                            }
                         }
-                        else if (item.EndOfLife(6))
-                        {
-                            highlightColor = "Yellow";
-                            highlightTextColor = "Black";
-                        }
-                        Panel("row", PrintAssetByColumns(item, cols, colspan: colspan), width: listWidth, color: color, fontColor: fontColor, highlightColor: highlightColor, highlightTextColor: highlightTextColor);
+                        Panel("row", PrintAssetByColumns(item, cols, colspan: colspan), width: listWidth, color: color, fontColor: fontColor, filterTable: filterTable, highlightColor: highlightColor, highlightTextColor: highlightTextColor);
                     }
                     Panel("bottom", width: listWidth, vPadding: 1, color: color, fontColor: fontColor);
                     break;
@@ -279,21 +347,24 @@ namespace Asset_Tracking_20220504
         }
 
         // adds a thousands separator to numbers
-        static string FormatN(long number)
+        static string FormatN(double number, int decimals = 0)
         {
-            string result = "";
-            string chars = number.ToString();
-            int numberOfCommas = 0;
-            for (int i = chars.Length - 1; i >= 0; i--)
-            {
-                result = result.Insert(0, chars[i].ToString());
-                if ((result.Length - numberOfCommas) % 3 == 0 && i != 0)
-                {
-                    result = result.Insert(0, ",");
-                    numberOfCommas++;
-                }
-            }
-            return result;
+            return number.ToString("N" + decimals, CultureInfo.InvariantCulture);
+
+            // The old way I did this:
+            //string result = "";
+            //string chars = number.ToString();
+            //int numberOfCommas = 0;
+            //for (int i = chars.Length - 1; i >= 0; i--)
+            //{
+            //    result = result.Insert(0, chars[i].ToString());
+            //    if ((result.Length - numberOfCommas) % 3 == 0 && i != 0)
+            //    {
+            //        result = result.Insert(0, ",");
+            //        numberOfCommas++;
+            //    }
+            //}
+            //return result;
         }
 
         // Returns the same string with its first letter uppercased
@@ -304,37 +375,35 @@ namespace Asset_Tracking_20220504
             return str.ToUpper();
         }
 
-        // Displays a menu UI for the basic functions
-        static void ShowMenu(List<menuFunction> menu, int selected = 1)
+        // Displays a menu UI for the options listed in the specified "menu" List
+        static void ShowMenu(List<MenuFunction> menu, int selected = 1, string subheading = "", int width = 38)
         {
-            Panel("top", width: 50, vPadding: 1);
+            Panel("top", width: width, vPadding: 1);
             if (selected < 1) selected = menu.Count;
             else if (selected > menu.Count) selected = 1;
             for (int i = 0; i < menu.Count; i++)
             {
-                Panel("row", "[" + (i + 1) + "] " + menu[i].Description, highlight: i == selected - 1, width: 50);
+                Panel("row", "[" + (i + 1) + "] " + menu[i].Description, highlight: i == selected - 1, width: width);
             }
-            Panel("bottom", width: 50, vPadding: 1);
+            Panel("bottom", width: width, vPadding: 1);
             Console.CursorVisible = false;
-            SelectMenu(menu, selected);
+            SelectMenu(menu, selected, subheading);
         }
 
-
-        static void SelectMenu(List<menuFunction> menu, int selected = 1)
+        // Implements redrawing the menu onto the console to give the illusion of up-down selection
+        static void SelectMenu(List<MenuFunction> menu, int selected = 1, string subheading = "")
         {
             ConsoleKeyInfo keyPressed = Console.ReadKey(true);
-            Console.Clear();
-            CurrentContentShown();
             switch (keyPressed.Key)
             {
                 case ConsoleKey.Enter:
                     menu[selected - 1].Action.Invoke();
                     break;
                 case ConsoleKey.UpArrow or ConsoleKey.LeftArrow or ConsoleKey.Backspace:
-                    ShowMenu(menu, selected - 1);
+                    ShowState(menu, selected - 1, subheading, filterTableTemp, orderByTemp, thenByTemp);
                     break;
                 case ConsoleKey.DownArrow or ConsoleKey.RightArrow or ConsoleKey.Tab:
-                    ShowMenu(menu, selected + 1);
+                    ShowState(menu, selected + 1, subheading, filterTableTemp, orderByTemp, thenByTemp);
                     break;
                 default: // If the keyPressed is not arrows/Enter, then check which number it is
                     Int32 keyNumber;
@@ -342,67 +411,10 @@ namespace Asset_Tracking_20220504
                     {
                         menu[keyNumber - 1].Action.Invoke();
                     }
-                    else ShowMenu(menu, selected);
+                    else ShowState(menu, selected, subheading, filterTableTemp, orderByTemp, thenByTemp);
                     break;
             }
         }
-    }
 
-    public class Asset
-    {
-        public Asset(string type, string brand, string model, string office, DateTime purchaseDate, long price, string currency = "USD")
-        {
-            Type = type;
-            Brand = brand;
-            Model = model;
-            Office = office;
-            PurchaseDate = purchaseDate;
-            Price = price;
-            Currency = currency;
-        }
-
-        public string Type { get; set; }
-        public string Brand { get; set; }
-        public string Model { get; set; }
-        public string Office { get; set; }
-        public DateTime PurchaseDate { get; set; }
-        public long Price { get; set; }
-        public string Currency { get; set; }
-
-        public bool EndOfLife(int numberOfMonths = 3)
-        {
-            DateTime ExpiryDate = PurchaseDate.AddYears(3);
-
-            return PurchaseDate < DateTime.Now.AddYears(-3).AddMonths(numberOfMonths);
-        }
-
-        static long GetLocalPrice()
-        {
-            return 0;
-        }
-    }
-
-    internal class Column
-    {
-        public Column(string name = "", int width = 1, string propertyName = "")
-        {
-            Name = name;
-            Width = Math.Max(width, name.Length);
-            PropertyName = propertyName.Length != 0 ? propertyName : new CultureInfo("en-UK").TextInfo.ToTitleCase(name).Replace(" ", "");
-        }
-        public string Name { get; set; }
-        public int Width { get; set; }
-        public string PropertyName { get; set; }
-    }
-
-    internal class menuFunction
-    {
-        public menuFunction(string description, Action action)
-        {
-            Description = description;
-            Action = action;
-        }
-        public string Description { get; set; }
-        public Action Action { get; set; }
     }
 }
