@@ -16,7 +16,7 @@ namespace Asset_Tracking_20220504
         }
 
 
-        // === SETTING UP SOME OPTIONS & VARIABLES ===
+        // --------------- SETTING UP SOME OPTIONS & VARIABLES ---------------
 
         static string dataPath = Path.Combine(Directory.GetParent(Environment.CurrentDirectory).Parent.Parent.FullName, @"data.json");
 
@@ -25,8 +25,6 @@ namespace Asset_Tracking_20220504
         public static string orderByTemp = "";
 
         public static string thenByTemp = "";
-
-        static CultureInfo ci = new CultureInfo("en-UK");
 
         static List<Asset> assets = new List<Asset>();
 
@@ -58,15 +56,16 @@ namespace Asset_Tracking_20220504
         };
 
 
-        // === PROGRAM METHODS ===
+        // --------------- PROGRAM METHODS ---------------
 
         static public void ShowState(List<MenuFunction> menu, int menuSelected = 1, string subheading = "", bool filterTable = false, string orderBy = "", string thenBy = "")
         {
-            // set global options
+            // Set or reset global options so that they stay the same between state changes
             filterTableTemp = filterTable;
             orderByTemp = orderBy;
             thenByTemp = thenBy;
 
+            // Draw the current state onto the console
             PrintHeader(subheading: subheading);
             PrintAssets();
             ShowMenu(menu, menuSelected, subheading);
@@ -151,31 +150,8 @@ namespace Asset_Tracking_20220504
             return row;
         }
 
-        // Loads the database from a JSON file at the specified path, or load it from
-        static void LoadData(string path)
-        {
-            string json = "";
-            if (File.Exists(path)) json = File.ReadAllText(path);
-            try
-            {
-                assets = JsonSerializer.Deserialize<List<Asset>>(json);
-            }
-            catch (Exception)
-            {
-                AddTestData();
-                SaveData(path);
-                LoadData(path);
-            }
-        }
 
-        // Saves the assets list into a JSON file at the specificed path
-        static void SaveData(string path)
-        {
-            File.WriteAllText(path, JsonSerializer.Serialize(assets));
-        }
-
-
-        // === HELPER METHODS ===
+        // --------------- HELPER METHODS ---------------
 
         // Populate the "asset" List with some dummy data
         static void AddTestData()
@@ -336,7 +312,7 @@ namespace Asset_Tracking_20220504
             if (bMargin != 0) for (int i = 0; i < bMargin; i++) Console.WriteLine("");
         }
 
-        // Returns a sring that aligns the passed text inside the width of a containing box
+        // Returns a string that aligns the passed text inside the width of a containing box
         static string TextAlign(string text = "", int boxLength = 1, string textAlign = "")
         {
             int leftPadding = 0;
@@ -356,25 +332,10 @@ namespace Asset_Tracking_20220504
         static string FormatN(double number, int decimals = 0)
         {
             return number.ToString("N" + decimals, CultureInfo.InvariantCulture);
-
-            // The old way I did this:
-            //string result = "";
-            //string chars = number.ToString();
-            //int numberOfCommas = 0;
-            //for (int i = chars.Length - 1; i >= 0; i--)
-            //{
-            //    result = result.Insert(0, chars[i].ToString());
-            //    if ((result.Length - numberOfCommas) % 3 == 0 && i != 0)
-            //    {
-            //        result = result.Insert(0, ",");
-            //        numberOfCommas++;
-            //    }
-            //}
-            //return result;
         }
 
         // Returns the same string with its first letter uppercased
-        static string? FirstLetterToUpper(string str)
+        static string FirstLetterToUpper(string str)
         {
             if (str == null) return null;
             if (str.Length > 1) return char.ToUpper(str[0]) + str.Substring(1);
@@ -420,6 +381,29 @@ namespace Asset_Tracking_20220504
                     else ShowState(menu, selected, subheading, filterTableTemp, orderByTemp, thenByTemp);
                     break;
             }
+        }
+
+        // Loads the database from a JSON file at the specified path, or load it from
+        static void LoadData(string path)
+        {
+            string json = "";
+            if (File.Exists(path)) json = File.ReadAllText(path);
+            try
+            {
+                assets = JsonSerializer.Deserialize<List<Asset>>(json);
+            }
+            catch (Exception)
+            {
+                AddTestData();
+                SaveData(path);
+                LoadData(path);
+            }
+        }
+
+        // Saves the assets list into a JSON file at the specificed path
+        static void SaveData(string path)
+        {
+            File.WriteAllText(path, JsonSerializer.Serialize(assets));
         }
 
     }
