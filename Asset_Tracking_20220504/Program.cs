@@ -41,7 +41,6 @@ namespace Asset_Tracking_20220504
             new Column("", 3, propertyName: "DefaultCurrency"),
             new Column("Local Price"),
             new Column("Currency")
-
         };
 
         static List<MenuFunction> mainMenu = new List<MenuFunction>
@@ -72,6 +71,7 @@ namespace Asset_Tracking_20220504
             SelectMenu(menu, menuSelected, subheading);
         }
 
+        // Display a title at the top, incl. subtitle
         static void PrintHeader(string subheading = "")
         {
             Console.Clear();

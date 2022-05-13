@@ -1,12 +1,22 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Globalization;
 
 namespace Asset_Tracking_20220504
 {
-    public class Asset
+    internal class Column
+    {
+        public Column(string name = "", int width = 1, string propertyName = "")
+        {
+            Name = name;
+            Width = Math.Max(width, name.Length);
+            PropertyName = propertyName.Length != 0 ? propertyName : new CultureInfo("en-UK").TextInfo.ToTitleCase(name).Replace(" ", "");
+        }
+        public string Name { get; set; }
+        public int Width { get; set; }
+        public string PropertyName { get; set; }
+    }
+
+    internal class Asset
     {
         public Asset(string type, string brand, string model, string office, DateTime purchaseDate, double localPrice)
         {
@@ -16,6 +26,7 @@ namespace Asset_Tracking_20220504
             Office = office;
             PurchaseDate = purchaseDate;
             LocalPrice = localPrice;
+            DefaultCurrency = "USD";
         }
 
         public string Type { get; set; }
@@ -24,8 +35,9 @@ namespace Asset_Tracking_20220504
         public string Office { get; set; }
         public DateTime PurchaseDate { get; set; }
         public double LocalPrice { get; set; }
-        public string DefaultCurrency { get { return "USD"; } }
-        public string Currency {
+        public string DefaultCurrency { get; set; }
+        public string Currency
+        {
             get
             {
                 switch (Office)
@@ -36,9 +48,10 @@ namespace Asset_Tracking_20220504
                         return "DKK";
                     case "Norway":
                         return "NOK";
-                    case "United Kingdom": case "UK":
+                    case "United Kingdom":
+                    case "UK":
                         return "GBP";
-                    case "Austria": case "Belgium": case "Cyprus": case "Estonia": case "Finland": case "France": case "": case "Germany": case "Greece": case "Ireland": case "Italy": case "Latvia": case "Lithuania": case "Luxembourg": case "Malta": case "the Netherlands": case "Portugal": case "Slovakia": case "Slovenia": case "Spain": 
+                    case "Austria": case "Belgium": case "Cyprus": case "Estonia": case "Finland": case "France": case "Germany": case "Greece": case "Ireland": case "Italy": case "Latvia": case "Lithuania": case "Luxembourg": case "Malta": case "the Netherlands": case "Portugal": case "Slovakia": case "Slovenia": case "Spain":
                         return "EUR";
                     default:
                         return DefaultCurrency;
@@ -60,12 +73,20 @@ namespace Asset_Tracking_20220504
                 return LocalPrice * rate;
             }
         }
-
         public bool EndOfLife(int numberOfMonths = 3)
         {
-            DateTime ExpiryDate = PurchaseDate.AddYears(3);
             return PurchaseDate < DateTime.Now.AddYears(-3).AddMonths(numberOfMonths);
         }
     }
 
+    internal class MenuFunction
+    {
+        public MenuFunction(string description, Action action)
+        {
+            Description = description;
+            Action = action;
+        }
+        public string Description { get; set; }
+        public Action Action { get; set; }
+    }
 }
